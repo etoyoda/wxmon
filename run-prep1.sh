@@ -1,0 +1,44 @@
+#!/bin/bash
+
+PATH=/bin:/usr/bin
+TZ=UTC; export TZ
+
+set -e
+
+: ${phase:=p1}
+: ${prefix:=${HOME}/nwp-test}
+: ${base:=${prefix}/${phase}}
+# simply using wall-clock time in UTC
+: ${reftime:=`date +%Y-%m-%d`}
+
+datedir="${base}/${reftime}.new"
+export phase base reftime datedir prefix
+
+test -f "$1"
+
+cd ${base}
+# aborts by -e if prefix or base is ill-configured
+
+if test -f stop ; then
+  logger --tag run-prep --id=$$ -p news.err "suspended - remove ${base}/stop"
+  false
+fi
+
+if mkdmsg=$(mkdir ${datedir} 2>&1)
+then
+  incomplete=$(readlink incomplete || echo missing)
+  yesterday=$(basename $incomplete .new)
+  if [ -d "${incomplete}" ]; then
+    mv -f "${incomplete}" "${yesterday}"
+    ln -Tfs "${yesterday}" latest
+    logger --tag run-prep --id=$$ -p news.info "latest -> ${yesterday}, incomplete -> ${datedir}"
+    gzip ${yesterday}/*-${yesterday}.tar
+  fi
+  ln -Tfs ${reftime}.new incomplete
+fi
+
+cd ${datedir}
+
+bash -$- "$@"
+
+exit 0
