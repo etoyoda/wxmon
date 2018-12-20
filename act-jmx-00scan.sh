@@ -5,6 +5,8 @@ PATH=/bin:/usr/bin
 
 : ${phase:?} ${base:?} ${reftime:?} ${datedir:?} ${prefix:?}
 
+# logger --tag wxmon --id=$$ -p news.notice -- "prefix=$prefix datedir=$datedir phase=$phase base=$base reftime=$reftime"
+
 : ${ruby:=/usr/bin/ruby}
 : ${script:=${prefix}/bin/jmxscan.rb}
 
@@ -17,7 +19,7 @@ if ! test jmx-${ymd}.tar -nt jmx-index-${ymd}.ltsv ; then
   exit 0
 fi
 
-rc=0 && $ruby ${script} jmx-2???-??-??.tar > tmp.ltsv || rc=$?
+rc=0 && $ruby ${script} jmx-${ymd}.tar > tmp.ltsv || rc=$?
 if (( $rc != 0 )) ; then
   logger --tag wxmon --id=$$ -p news.err -s -- "jmxscan rc=$rc"
   exit $rc
