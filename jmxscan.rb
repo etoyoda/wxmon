@@ -2,6 +2,7 @@
 
 require 'rubygems'
 require 'archive/tar/minitar'
+require 'syslog'
 
 class JMXParser
   require 'rexml/parsers/baseparser'
@@ -78,6 +79,8 @@ end
 class App
 
   def initialize
+    @onset = Time.now
+    @logger = Syslog.open('jmxscan', Syslog::LOG_PID, Syslog::LOG_NEWS)
   end
 
   def msgscan name, body
@@ -106,8 +109,13 @@ class App
     rawio.close unless io == rawio
   end
 
+  def syslog
+    @logger.info('elapsed %g', Time.now - @onset)
+  end
+
   def run argv
     argv.each{|arg| tarfile(arg); GC.start }
+    syslog
   end
 
 end
