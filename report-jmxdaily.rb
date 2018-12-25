@@ -14,8 +14,8 @@ class App
 府県気象情報
 指定河川洪水予報
 土砂災害警戒情報
-警報級の可能性（明日まで）
-警報級の可能性（明後日以降）
+//警報級の可能性（明日まで）
+//警報級の可能性（明後日以降）
 全般台風情報（定型）
 記録的短時間大雨情報
 竜巻注意情報（目撃情報付き）
@@ -50,10 +50,13 @@ class App
     title, edof = row['title'], row['edof']
     return unless @@titles.include?(title)
     @db[title] = Hash.new unless @db[title]
-    @db[title][edof] = rec = Hash.new
+    @db[title][edof] = [] unless @db[title][edof]
+    rec = Hash.new
     rec[:rtime] = Time.parse(row['rtime']).localtime.strftime('%H:%M')
     rec[:hdline] = row['hdline']
-    rec[:url] = 'https://tako.toyoda-eizi.net/syndl/entry/' +  row['msgid']
+    ymd = Time.parse(row['mtime']).utc.strftime('%Y-%m-%d')
+    rec[:url] = "https://tako.toyoda-eizi.net/syndl/entry/#{ymd}/jmx/#{row['msgid']}"
+    @db[title][edof].push rec
   end
 
   def run
@@ -61,7 +64,7 @@ class App
       File.open(fnam, 'rt') {|fp|
         fp.set_encoding('utf-8', @@ioopts)
         fp.each_line { |line|
-          row = Hash[*(line.split(/\t/).map{|cell| cell.split(/:/,2)}.flatten)]
+          row = Hash[*(line.chomp.split(/\t/).map{|cell| cell.split(/:/,2)}.flatten)]
           check(row)
         }
       }
