@@ -83,9 +83,9 @@ class App
     @logger = Syslog.open('jmxscan', Syslog::LOG_PID, Syslog::LOG_NEWS)
   end
 
-  def msgscan name, body
+  def msgscan name, mtime, body
     listener = JMXParser.new {|tup|
-      ary = [['msgid:', name].join]
+      ary = ["msgid:#{name}", "mtime:#{mtime.utc.strftime('%Y-%m-%dT%H:%M:%SZ')}"]
       tup.each {|k,v| ary.push "#{k}:#{v}" }
       puts ary.join("\t") rescue Errno::EPIPE
     }
@@ -101,7 +101,7 @@ class App
     end
     Archive::Tar::Minitar::Reader.open(io) { |tar|
       tar.each_entry {|ent|
-        msgscan(ent.name, ent.read)
+        msgscan(ent.name, Time.at(ent.mtime), ent.read)
       }
     }
   ensure
