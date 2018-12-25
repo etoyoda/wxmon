@@ -14,8 +14,8 @@ class App
 府県気象情報
 指定河川洪水予報
 土砂災害警戒情報
-//警報級の可能性（明日まで）
-//警報級の可能性（明後日以降）
+警報級の可能性（明日まで）
+警報級の可能性（明後日以降）
 全般台風情報（定型）
 記録的短時間大雨情報
 竜巻注意情報（目撃情報付き）
@@ -59,7 +59,7 @@ class App
     @db[title][edof].push rec
   end
 
-  def run
+  def compile
     @argv.each{|fnam|
       File.open(fnam, 'rt') {|fp|
         fp.set_encoding('utf-8', @@ioopts)
@@ -69,7 +69,36 @@ class App
         }
       }
     }
-    puts @db.inspect
+  end
+
+  def writeln str
+    $stdout.puts str
+  end
+
+  def report
+    @@titles.each {|title|
+      writeln "= #{title}"
+      unless @db[title]
+        writeln "none."
+        next
+      end
+      writeln ''
+      @db[title].each{|edof,mlist|
+        bedof = edof.sub(/気象庁本庁/, '本庁').sub(/(管区気象台|地方気象台|測候所)$/, '')
+        mlist.each {|msg|
+          sgn = "[#{bedof} #{msg[:rtime]}] "
+          sgn += msg[:hdline] if msg[:hdline]
+          writeln sgn
+          writeln "<#{msg[:url]}>"
+        }
+      }
+      writeln ''
+    }
+  end
+
+  def run
+    compile
+    report
   end
 
 end
