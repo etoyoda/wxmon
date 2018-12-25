@@ -14,7 +14,7 @@ cd ${datedir}
 test ! -e tmp.ltsv || rm -f tmp.ltsv
 ymd=$(basename ${datedir} .new)
 
-if ! test jmx-${ymd}.tar -nt jmx-index-${ymd}.ltsv ; then
+if test jmx-index-${ymd}.ltsv -nt jmx-${ymd}.tar ; then
   logger --tag wxmon --id=$$ -p news.err -s -- "jmx-index-${ymd}.ltsv up to date"
   exit 0
 fi
