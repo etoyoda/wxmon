@@ -1,8 +1,74 @@
 #!/usr/bin/ruby
 
 require 'time'
+require 'rubygems'
+
+class JMXParser
+  require 'rexml/parsers/baseparser'
+  require 'rexml/parsers/streamparser'
+  require 'rexml/streamlistener'
+  include REXML::StreamListener
+
+  def initialize
+    @path = ['']
+    @xpath = nil
+    @callback = proc
+    @flag = nil
+    @msgs = {}
+    @row = nil
+  end
+
+  def endOfDocument
+    @callback.call(@msgs.keys)
+  end
+
+  def tag_start(name, attrs)
+    @path.push(name.sub(/^\w+:/, ''))
+    @xpath = @path.join('/')
+    case @xpath
+    when '/Report/Body/MeteorologicalInfos/TimeSeriesInfo/Item/Kind/Property'
+      @flag = true
+      @row = {}
+    end
+  end
+
+  def tag_end(name)
+    case @xpath
+    when '/Report/Body/MeteorologicalInfos/TimeSeriesInfo/Item/Kind/Property'
+      if @row[:flag]
+        msg = (@row[:text] || "#{@row[:type]}: #{@row[:flag]}. ")
+        @msgs[msg] = true
+      end
+      @flag = false
+    end
+    @path.pop
+    @xpath = @path.join('/')
+    endOfDocument if @xpath == ''
+  end
+
+  def text(str)
+    return unless @flag
+    case @xpath
+    when /\/Type$/ then @row[:type] = str
+    when /\/Text$/ then @row[:text] = str
+    when /\/PossibilityRankOfWarning$/ then
+      case str
+      when /中/ then
+        unless @row[:flag] then @row[:flag] = $& end
+      when /高/ then
+        @row[:flag] = $&
+      end
+    end
+  end
+
+end
 
 class App
+
+  @@hacktitles = %w[
+警報級の可能性（明日まで）
+警報級の可能性（明後日以降）
+  ]
 
   @@titles = %w[
 
@@ -39,6 +105,7 @@ class App
   def initialize argv
     @argv = argv
     @db = {}
+    @fixdb = {}
   end
 
   @@ioopts = {
@@ -53,9 +120,13 @@ class App
     @db[title][edof] = [] unless @db[title][edof]
     rec = Hash.new
     rec[:rtime] = Time.parse(row['rtime']).localtime.strftime('%H:%M')
-    rec[:hdline] = row['hdline']
+    hdline = (row['hdline'] || '')
+    hdline = nil if hdline.empty? and @@hacktitles.include?(title)
+    rec[:hdline] = hdline
     ymd = Time.parse(row['mtime']).utc.strftime('%Y-%m-%d')
-    rec[:url] = "https://tako.toyoda-eizi.net/syndl/entry/#{ymd}/jmx/#{row['msgid']}"
+    uuid = row['msgid']
+    @fixdb[uuid] = rec unless rec[:hdline]
+    rec[:url] = "https://tako.toyoda-eizi.net/syndl/entry/#{ymd}/jmx/#{uuid}"
     @db[title][edof].push rec
   end
 
@@ -71,15 +142,71 @@ class App
     }
   end
 
-  def writeln str
-    $stdout.puts str
+  def realmsg name, body
+    listener = JMXParser.new {|msgs|
+      @fixdb[name][:hdline] = msgs.join(' ') unless msgs.empty?
+    }
+    REXML::Parsers::StreamParser.new(body, listener).parse
+  end
+
+  def tarfile fnam
+    require 'archive/tar/minitar'
+    rawio = io = nil
+    begin
+      io = File.open(fnam, 'rb')
+      io.set_encoding('BINARY')
+    rescue Errno::ENOENT
+      require 'zlib'
+      rawio = File.open(fnam + ".gz", 'rb')
+      rawio.set_encoding('BINARY')
+      io = Zlib::GzipReader.new(rawio)
+    end
+    Archive::Tar::Minitar::Reader.open(io) { |tar|
+      tar.each_entry {|ent|
+        next unless @fixdb[ent.name]
+        realmsg(ent.name, ent.read)
+      }
+    }
+  ensure
+    io.close if io
+    rawio.close if rawio
+  end
+
+  def fix
+    @argv.each{|fnam|
+      tarfile fnam.sub(/(\.ltsv)?$/, '.tar')
+    }
+    ## filtering
+    @@titles.each{|title|
+      next unless @db[title]
+      killedof = []
+      @db[title].each{|edof,mlist|
+        next unless @@hacktitles.include?(title)
+        mlist2 = mlist.collect{|msg| msg[:hdline] }.compact
+        killedof.push edof if mlist2.empty?
+      }
+      killedof.each{|edof|
+        @db[title].delete(edof)
+      }
+    }
+  end
+
+  def subjline
+    buf = ["~s 電文モニタ"]
+    @@titles.each {|title|
+      next unless @db[title]
+      n = 0
+      @db[title].each{|edof,mlist| n += mlist.size}
+      buf.push "#{n}x#{title[0,4]}"
+    }
+    buf.join(', ')
   end
 
   def report
     @@titles.each {|title|
       writeln "= #{title}"
       unless @db[title]
-        writeln "none."
+        writeln "ありません。"
         next
       end
       writeln ''
@@ -94,10 +221,17 @@ class App
       }
       writeln ''
     }
+    writeln '(END)'
+    writeln subjline
+  end
+
+  def writeln str
+    $stdout.puts str rescue Errno::EPIPE
   end
 
   def run
     compile
+    fix
     report
   end
 
