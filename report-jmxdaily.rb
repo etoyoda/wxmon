@@ -103,7 +103,17 @@ class App
   ]
 
   def initialize argv
-    @argv = argv
+    @argv = []
+    @cutoff = nil
+    argv.each{|arg|
+      case arg
+      when /^--cutoff=/ then
+        @cutoff = Time.parse($').utc.strftime('%Y-%m-%dT%H:%M:%SZ')
+      when /^--/ then
+        raise "unknown option #{arg}"
+      else @argv.push arg
+      end
+    }
     @db = {}
     @fixdb = {}
   end
@@ -114,7 +124,8 @@ class App
   }
 
   def check row
-    title, edof = row['title'], row['edof']
+    mtime, title, edof = row['mtime'], row['title'], row['edof']
+    return if @cutoff and mtime < @cutoff
     return unless @@titles.include?(title)
     @db[title] = Hash.new unless @db[title]
     @db[title][edof] = [] unless @db[title][edof]
