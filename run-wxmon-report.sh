@@ -26,7 +26,7 @@ ln -Tfs /nwp/p0/incomplete/jmx-2*.tar z.curr.tar
 
 TZ=JST-9 ruby /nwp/bin/report-jmxdaily.rb --cutoff=$cutoff z.prev.ltsv z.curr.ltsv > report.txt
 
-
+bash /nwp/bin/mailjis.sh report.txt news updates
 
 rm -rf z.*
 cd $base

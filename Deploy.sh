@@ -13,7 +13,7 @@ CONFIG
 fi
 : ${bindir:?} ${priv:?} ${cgidir:?}
 
-target="act-*.sh jmxscan.rb report-jmxdaily.rb"
+target="act-*.sh run-*.sh mailjis.sh jmxscan.rb report-jmxdaily.rb"
 
 sudo -u $priv install -m 0755 $target $bindir
 
