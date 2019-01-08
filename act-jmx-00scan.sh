@@ -3,12 +3,12 @@ set -Ceuo pipefail
 
 PATH=/bin:/usr/bin
 
-: ${phase:?} ${base:?} ${reftime:?} ${datedir:?} ${prefix:?}
+: ${phase:?} ${base:?} ${reftime:?} ${datedir:?} ${nwp:?}
 
-# logger --tag wxmon --id=$$ -p news.notice -- "prefix=$prefix datedir=$datedir phase=$phase base=$base reftime=$reftime"
+# logger --tag wxmon --id=$$ -p news.notice -- "nwp=$nwp datedir=$datedir phase=$phase base=$base reftime=$reftime"
 
 : ${ruby:=/usr/bin/ruby}
-: ${script:=${prefix}/bin/jmxscan.rb}
+: ${script:=${nwp}/bin/jmxscan.rb}
 
 cd ${datedir}
 test ! -e tmp.ltsv || rm -f tmp.ltsv
