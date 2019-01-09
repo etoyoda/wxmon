@@ -7,7 +7,7 @@ shift
 mailfrom="$1"
 shift
 
-sbj=$(ruby -ne 'puts $1.split(" ").map{|f| "=?UTF-8?B?" + [f].pack("m").chomp + "?="}.join(" ") if /^~s *(.*)/' $input)
+sbj=$(ruby -ne 'puts $1.split(" ").map{|f| "=?UTF-8?B?" + [f].pack("m").chomp + "?="}.join(" ") if /^~s *(.*)/u' $input)
 
 case "$1" in
 -s)
