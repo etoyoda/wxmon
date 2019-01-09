@@ -17,7 +17,7 @@ jobwk=${base}/wk.${refhour}-wxmon.$$
 mkdir $jobwk
 cd $jobwk
 
-cutoff=$(ruby -rtime -e 'puts((Time.parse(ARGV.first) - 86400).strftime("%Y-%m-%dT%HZ"))' $refhour)
+cutoff=$(ruby -rtime -e 'puts((Time.parse(ARGV.first.sub(/Z/,":00Z")) - 86400).utc.strftime("%Y-%m-%dT%H:%MZ"))' $refhour)
 
 ln -Tfs /nwp/p0/latest/jmx-index-2*.ltsv z.prev.ltsv
 ln -Tfs /nwp/p0/latest/jmx-2*.tar z.prev.tar
@@ -30,7 +30,7 @@ bash /nwp/bin/mailjis.sh report.txt news updates
 
 rm -rf z.*
 cd $base
-test ! -d ${refhour}-wxmon.bak || rm -rf ${refhour}-wkmon.bak
-test ! -d ${refhour}-wxmon || mv -f ${refhour}-wxmon ${refhour}-wkmon.bak
+test ! -d ${refhour}-wxmon.bak || rm -rf ${refhour}-wxmon.bak
+test ! -d ${refhour}-wxmon || mv -f ${refhour}-wxmon ${refhour}-wxmon.bak
 mv $jobwk ${refhour}-wxmon
 exit 0
