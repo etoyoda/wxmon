@@ -130,7 +130,7 @@ class App
     @db[title] = Hash.new unless @db[title]
     @db[title][edof] = [] unless @db[title][edof]
     rec = Hash.new
-    rec[:rtime] = Time.parse(row['rtime']).localtime.strftime('%H:%M')
+    rec[:rtime] = Time.parse(row['rtime']).localtime.strftime('%dT%H:%M')
     hdline = (row['hdline'] || '')
     hdline = nil if hdline.empty? and @@hacktitles.include?(title)
     rec[:hdline] = hdline
@@ -138,7 +138,7 @@ class App
     uuid = row['msgid']
     @fixdb[uuid] = rec unless rec[:hdline]
     rec[:url] = "https://tako.toyoda-eizi.net/syndl/entry/#{ymd}/jmx/#{uuid}"
-    @db[title][edof].push rec
+    @db[title][edof].unshift rec
   end
 
   def compile
@@ -188,17 +188,29 @@ class App
       tarfile fnam.sub(/(\.ltsv)?$/, '.tar')
     }
     ## filtering
+    title_to_kill = []
     @@titles.each{|title|
       next unless @db[title]
-      killedof = []
-      @db[title].each{|edof,mlist|
-        next unless @@hacktitles.include?(title)
-        mlist2 = mlist.collect{|msg| msg[:hdline] }.compact
-        killedof.push edof if mlist2.empty?
+      next unless @@hacktitles.include?(title)
+      edof_to_kill = []
+      @db[title].keys.each{|edof|
+        mlist2 = []
+        @db[title][edof].each{|rec|
+        $stderr.puts "## #{title} #{edof} #{rec[:hdline]}"
+          next unless rec[:hdline]
+          next if rec[:hdline].empty?
+          mlist2.push rec
+        }
+        @db[title][edof] = mlist2
+        edof_to_kill.push edof if mlist2.empty?
       }
-      killedof.each{|edof|
+      edof_to_kill.each{|edof|
         @db[title].delete(edof)
       }
+      title_to_kill.push title if @db[title].empty?
+    }
+    title_to_kill.each{|title|
+      @db.delete(title)
     }
   end
 

@@ -4,8 +4,8 @@ if [ -f .deploy ] ; then
   source ./.deploy
 else
   cat > .deploy <<CONFIG
-bindir=/nwp/bin
-priv=nwp
+: ${bindir:=/nwp/bin}
+: ${priv:=nwp}
 cgidir=/usr/lib/cgi-bin
 CONFIG
   echo please check config file .deploy and rerun.

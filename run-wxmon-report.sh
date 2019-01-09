@@ -19,14 +19,18 @@ cd $jobwk
 
 cutoff=$(ruby -rtime -e 'puts((Time.parse(ARGV.first.sub(/Z/,":00Z")) - 86400).utc.strftime("%Y-%m-%dT%H:%MZ"))' $refhour)
 
-ln -Tfs /nwp/p0/latest/jmx-index-2*.ltsv z.prev.ltsv
-ln -Tfs /nwp/p0/latest/jmx-2*.tar z.prev.tar
-ln -Tfs /nwp/p0/incomplete/jmx-index-2*.ltsv z.curr.ltsv
-ln -Tfs /nwp/p0/incomplete/jmx-2*.tar z.curr.tar
+ln -Tfs $nwp/p0/latest/jmx-index-2*.ltsv z.prev.ltsv
+ln -Tfs $nwp/p0/latest/jmx-2*.tar z.prev.tar
+ln -Tfs $nwp/p0/incomplete/jmx-index-2*.ltsv z.curr.ltsv
+ln -Tfs $nwp/p0/incomplete/jmx-2*.tar z.curr.tar
 
-TZ=JST-9 ruby /nwp/bin/report-jmxdaily.rb --cutoff=$cutoff z.prev.ltsv z.curr.ltsv > report.txt
+TZ=JST-9 ruby $nwp/bin/report-jmxdaily.rb --cutoff=$cutoff z.prev.ltsv z.curr.ltsv > report.txt
 
-bash /nwp/bin/mailjis.sh report.txt news updates
+case $nwp in
+/nwp)
+  bash /nwp/bin/mailjis.sh report.txt news updates
+  ;;
+esac
 
 rm -rf z.*
 cd $base
