@@ -1,6 +1,6 @@
 # 状態遷移的にとらえるべき電文とそうでない電文
 
-総じて気象データは日々更新されていくところに地図とは違った特色があるわけですが、その更新の様態は一通りではありません。データの保存・整理のやりかたを考える上で、認識しておかねばならないことです。
+総じて気象データはものすごく更新頻度が高くて、日々更新されていくところに地図とは違った特色があるわけですが、その更新の様態は一通りではありません。データの保存・整理のやりかたを考える上で、認識しておかねばならないことです。
 
 時系列の様態とかぼやけた言葉じゃなくて何か言葉があった（または昔コインした）ような気がするのですが、ちょっと思い出せません。
 
@@ -33,21 +33,58 @@
 
 ## 状態管理しがいのありそうなデータリスト
 
-- 地方海上警報
-- 気象特別警報・警報・注意報
-- 指定河川洪水予報
-- 土砂災害警戒情報
-- 府県週間天気予報
-- 津波警報・注意報・予報a
-- 噴火警報・予報
-- 府県海氷予報
-- 警報級の可能性（明日まで）
-- 警報級の可能性（明後日以降）
-- ｛２週間気温予報については勉強する｝
+### 地方海上警報
+
+- ヘッダ： VPCU51
+- 判別：/Report/Control/Title equals ”地方海上警報（Ｈ２８）” and /Report/Control/Status equals "通常”
+- 予報区：地方海上予報区
+- 有効期限管理： /Report/Head/ValidDateTime でエクスパイアするか、それまでに同種情報で上書き
+- タプル生成： foreach /Report/Head/Headline/Information[@type="地方海上警報"]/Item { foreach Kind { set kind = Code; foreach ../Areas/Area { set area = Code; yield [kind, area]; }}} 
+
+### 気象特別警報・警報・注意報
+
+- ヘッダ：VPWW53
+- 判別：/Report/Control/Title equals ”気象特別警報・警報・注意報” and /Report/Control/Status equals "通常”
+- 予報区：市町村等
+- 有効期限管理：解除されるまで有効
+- タプル生成：  foreach /Report/Head/Headline/Information[@type="気象警報・注意報（市町村等）"]/Item { foreach Kind { set kind = Code; foreach ../Areas/Area { set area = Code; yield [kind, area]; }}} 
+
+### 指定河川洪水予報
+
+- ヘッダ：VXKO50-89
+- 判別：/Report/Control/Title equals ”指定河川洪水予報” and /Report/Control/Status equals "通常”
+- 予報区：三種類ある。
+-- Information/@type="指定河川洪水予報（予報区域）" ：「利根川上流」のように河川を分割することがある。一覧は jmaxml_20??????_Code/201?????_AreaFloodForecast.xls で与えられる。
+-- Information/@type="指定河川洪水予報（河川）"  ：予報区域より粗い単位らしく、「利根川」でひとまとめになっている。一覧は jmaxml_20??????_Code/201?????_AreaFloodForecast.xls で与えられる。
+-- Information/@type="指定河川洪水予報（府県予報区等）"  ： 府県予報区なので相当粗いが、配信管理の観点で理解したらよいのだろう。 
+
+### 土砂災害警戒情報
+
+- ヘッダ：VXWW50
+- 全体構造とエリアコードは気象警報と共通。カインドコードは 0、1、3しかない
+
+### 府県週間天気予報
+
+- 時間構造：対象時刻を日単位（00JST日界）で区切って提供される。エッジトリガをかけるならば、日（対象時刻）を指定して比較する。
+- ヘッダ：VPFW50
+- 判別：/Report/Control/Title equals ”府県週間天気予報” and /Report/Control/Status equals "通常”
+- 予報区：区域予報（天気）と地点予報（気温）に分かれる。
+- 解読
+-- hash time = foreach /Report/Body/MeteorologicalInfos[@type="区域予報"]/TimeSeriesInfo/TimeDefines/TimeDefine { tupple @timeId, concat(DateTime, "/", Duration); }; 後略
+- データ
+-- 
+
+### 津波警報・注意報・予報a
+### 噴火警報・予報
+### 府県海氷予報
+### 警報級の可能性（明日まで）
+### 警報級の可能性（明後日以降）
+### ｛２週間気温予報については勉強する｝
 
 ## 明示的な解除報がないもの
 
 - 竜巻注意情報（目撃情報付き） ｛雷注意報を補足するものとの整理｝
 - スモッグ気象情報 ｛当日か翌日かが判別できれば｝
 - 府県高温注意情報 ｛解除は時刻指定｝
+
 
