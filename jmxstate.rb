@@ -34,7 +34,7 @@ class JMXParser
 
   def titleCheck title
     return if TYPETAB[title]
-    throw(:unknownTitle, title) if @opts[:fast]
+    throw(:skipMsg, "unknown title #{title}") if @opts[:fast]
   end
 
   def typeCheck type
@@ -44,7 +44,7 @@ class JMXParser
     elsif TYPETAB[@meta['title']] == type
       @itemdata = {}
     else
-      puts "#typeCheck unknown '#{@meta['title']}' => '#{type}'"
+      puts "#typeCheck unknown '#{@meta['title']}' => '#{type}'" if $VERBOSE
     end
   end
 
@@ -58,10 +58,12 @@ class JMXParser
   def itemEnd
     return unless @itemdata
     puts "#itemEnd" if $VERBOSE
-    @itemdata[:areas].each{|areaCode|
-      @itemdata[:kinds].each{|kindCode|
-        @callback.call(:area => areaCode, :kind => kindCode, :title => @meta['title'],
-          'utime' => @meta['utime'], 'expire' => @meta['expire'])
+    @itemdata[:areas].each{|area|
+      @itemdata[:kinds].each{|kind|
+        obj = [area, @meta['title']].join('|')
+        @callback.call('obj' => obj, 'state' => kind,
+          'utime' => @meta['utime'],
+          'expire' => @meta['expire'])
       }
     }
     @itemdata = {}
@@ -81,7 +83,8 @@ class JMXParser
     when '/Report/Head/Headline/Information' then typeCheck(nil)
     when '/Report/Head/Headline/Information/Item' then itemEnd
     when '/Report/Head' then
-      throw(:unknownTitle, @meta['title']) unless TYPETAB[@meta['title']]
+      title = @meta['title']
+      throw(:skipMsg, "unknown title #{title}") unless TYPETAB[@meta['title']]
     end
     @path.pop
     @xpath = @path.join('/')
@@ -93,14 +96,12 @@ class JMXParser
     # fields to identify message
     when '/Report/Control/Title' then titleCheck(@meta['title'] = str)
     when '/Report/Control/Status' then @meta['status'] = str
-    #when '/Report/Control/EditorialOffice' then @meta['edof'] = str
-    #when '/Report/Head/EventID' then @meta['evid'] = str
     when '/Report/Control/DateTime' then @meta['utime'] = str
     when '/Report/Head/ValidDateTime' then @meta['expire'] = str
     # data
-    when '/Report/Head/Headline/Information/Item/Kind/Code' then
+    when '/Report/Head/Headline/Information/Item/Kind/Name' then
       @itemdata[:kinds].push str if @itemdata
-    when '/Report/Head/Headline/Information/Item/Areas/Area/Code' then
+    when '/Report/Head/Headline/Information/Item/Areas/Area/Name' then
       @itemdata[:areas].push str if @itemdata
     else
       return
@@ -119,58 +120,115 @@ class App
     @onset = Time.now
     @logger = Syslog.open('jmxstate', Syslog::LOG_PID, Syslog::LOG_NEWS)
     @opts = { :fast => false }
+    @in_state = @out_state = @out_fnam = nil
+    @files = []
   end
 
   def msgscan name, mtime, body, opts
-    listener = JMXParser.new(opts) {|tup|
-      p tup
+    listener = JMXParser.new(opts) {|row|
+      objid = row['obj']
+      @out_state[objid] = row
     }
-    r = catch(:unknownTitle) {
+    r = catch(:skipMsg) {
       REXML::Parsers::StreamParser.new(body, listener).parse
       nil
     }
     if r then
-      puts "#unknown title #{r}" if $VERBOSE
+      puts "#skip #{r}" if $VERBOSE
     end
   end
 
+  def tgzfile fnam
+    rawio = File.open(fnam, 'rb')
+    rawio.set_encoding('BINARY')
+    require 'zlib'
+    io = Zlib::GzipReader.new(rawio)
+    Archive::Tar::Minitar::Reader.open(io) { |tar|
+      tar.each_entry {|ent|
+        msgscan(ent.name, Time.at(ent.mtime), ent.read, @opts)
+      }
+    }
+  ensure
+    io.close
+    rawio.close
+  end
+
   def tarfile fnam
-    case fnam
-    when '--fast' then
-      @opts[:fast] = true
-      return
-    when /\.xml$/ then
-      File.open(fnam, 'rb') {|io|
-        io.set_encoding('BINARY')
-        msgscan(fnam, File.stat(fnam).mtime, io.read, @opts)
+    io = File.open(fnam, 'rb')
+    io.set_encoding('BINARY')
+    Archive::Tar::Minitar::Reader.open(io) { |tar|
+      tar.each_entry {|ent|
+        msgscan(ent.name, Time.at(ent.mtime), ent.read, @opts)
       }
-      return
-    end
-    begin
-      rawio = io = File.open(fnam, 'rb')
+    }
+  ensure
+    io.close
+  end
+
+  def xmlfile arg
+    mtime = File.stat(fnam).mtime
+    File.open(fnam, 'rb') {|io|
       io.set_encoding('BINARY')
-      if /\.gz$/ === fnam then
-        require 'zlib'
-        io = Zlib::GzipReader.new(rawio)
-      end
-      Archive::Tar::Minitar::Reader.open(io) { |tar|
-        tar.each_entry {|ent|
-          msgscan(ent.name, Time.at(ent.mtime), ent.read, @opts)
-        }
+      msgscan(fnam, mtime, io.read, @opts)
+    }
+  end
+
+  def ltsv_load fnam
+    result = {}
+    File.open(fnam, 'rt') {|fp|
+      fp.each_line {|line|
+        row = Hash[* line.chomp.split(/\t/).map {|c| c.split(/:/, 2)}]
+        objid = row['obj']
+        @in_state[objid] = row
       }
-    ensure
-      io.close
-      rawio.close unless io == rawio
+    }
+    result
+  end
+
+  def filearg arg
+    if @in_state.nil?
+      @in_state = ltsv_load(arg)
+    elsif @out_state.nil?
+      @out_fnam = arg
+      @out_state = @in_state.dup
+    else
+      case arg
+      when /\.xml$/ then xmlfile(arg)
+      when /\.t(ar\.)?gz$/ then tgzfile(arg)
+      else tarfile(arg)
+      end
     end
+  end
+
+  def ltsv_save db, fnam
+    File.open(fnam, 'wt') {|fp|
+      db.each {|obj, row|
+        fp.puts row.map{|k,v| [k, v].join(':')}.join("\t")
+      }
+    }
+  end
+
+  def run argv
+    hyphen_is_flag = true
+    argv.each{|arg|
+      if hyphen_is_flag then
+        case arg
+        when '--' then hyphen_is_flag = false
+        when '--fast' then @opts[:fast] = true
+        when /^-/ then $stderr.puts "unknown option #{arg}"
+        else filearg(arg)
+        end
+      else
+        filearg(arg)
+      end
+    }
+    ltsv_save(@out_state, @out_fnam)
+  ensure
+    syslog
   end
 
   def syslog
     @logger.info('elapsed %g', Time.now - @onset)
-  end
-
-  def run argv
-    argv.each{|arg| tarfile(arg); GC.start }
-    syslog
   end
 
 end
