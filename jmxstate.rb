@@ -26,10 +26,18 @@ class JMXParser
   end
 
   TYPETAB = {
-    '気象特別警報・警報・注意報' => '気象警報・注意報（市町村等）',
-    '地方海上警報（Ｈ２８）' => '地方海上警報',
-    '土砂災害警戒情報' => '土砂災害警戒情報',
-    '指定河川洪水予報' => '指定河川洪水予報（予報区域）'
+    '気象特別警報・警報・注意報' => {
+      :type => '気象警報・注意報（市町村等）',
+      :abr => 'warn' },
+    '地方海上警報（Ｈ２８）' => {
+      :type => '地方海上警報',
+      :abr => 'marw' },
+    '土砂災害警戒情報' => {
+      :type => '土砂災害警戒情報',
+      :abr => 'dosha' },
+    '指定河川洪水予報' => {
+      :type => '指定河川洪水予報（予報区域）',
+      :abr => 'kasen' }
   }
 
   def titleCheck title
@@ -41,10 +49,13 @@ class JMXParser
     puts "#typeCheck(#{type.inspect})" if $VERBOSE
     if type.nil? then
       @itemdata = nil
-    elsif TYPETAB[@meta['title']] == type
-      @itemdata = {}
     else
-      puts "#typeCheck unknown '#{@meta['title']}' => '#{type}'" if $VERBOSE
+      title = @meta['title']
+      if TYPETAB[title] and TYPETAB[title][:type] == type
+        @itemdata = {}
+      else
+        puts "#typeCheck unknown '#{title}' => '#{type}'" if $VERBOSE
+      end
     end
   end
 
@@ -58,10 +69,13 @@ class JMXParser
   def itemEnd
     return unless @itemdata
     puts "#itemEnd" if $VERBOSE
+    abr = TYPETAB[@meta['title']][:abr]
     @itemdata[:areas].each{|area|
       @itemdata[:kinds].each{|kind|
-        obj = [area, @meta['title']].join('|')
-        @callback.call('obj' => obj, 'state' => kind,
+        obj = [abr, area[:code], kind[:code]].join('.')
+        @callback.call('obj' => obj, 'state' => kind[:code],
+          'aname' => area[:name],
+          'kname' => kind[:name],
           'utime' => @meta['utime'],
           'expire' => @meta['expire'])
       }
@@ -75,6 +89,10 @@ class JMXParser
     case @xpath
     when '/Report/Head/Headline/Information' then typeCheck(attrs['type'])
     when '/Report/Head/Headline/Information/Item' then itemStart
+    when '/Report/Head/Headline/Information/Item/Kind' 
+      @itemdata[:kindbuf] = {} if @itemdata
+    when '/Report/Head/Headline/Information/Item/Areas/Area'
+      @itemdata[:areabuf] = {} if @itemdata
     end
   end
 
@@ -82,6 +100,10 @@ class JMXParser
     case @xpath
     when '/Report/Head/Headline/Information' then typeCheck(nil)
     when '/Report/Head/Headline/Information/Item' then itemEnd
+    when '/Report/Head/Headline/Information/Item/Kind' 
+      @itemdata[:kinds].push @itemdata[:kindbuf] if @itemdata
+    when '/Report/Head/Headline/Information/Item/Areas/Area'
+      @itemdata[:areas].push @itemdata[:areabuf] if @itemdata
     when '/Report/Head' then
       title = @meta['title']
       throw(:skipMsg, "unknown title #{title}") unless TYPETAB[@meta['title']]
@@ -99,10 +121,14 @@ class JMXParser
     when '/Report/Control/DateTime' then @meta['utime'] = str
     when '/Report/Head/ValidDateTime' then @meta['expire'] = str
     # data
+    when '/Report/Head/Headline/Information/Item/Kind/Code' then
+      @itemdata[:kindbuf][:code] = str if @itemdata and @itemdata[:kindbuf]
     when '/Report/Head/Headline/Information/Item/Kind/Name' then
-      @itemdata[:kinds].push str if @itemdata
+      @itemdata[:kindbuf][:name] = str if @itemdata and @itemdata[:kindbuf]
+    when '/Report/Head/Headline/Information/Item/Areas/Area/Code' then
+      @itemdata[:areabuf][:code] = str if @itemdata and @itemdata[:areabuf]
     when '/Report/Head/Headline/Information/Item/Areas/Area/Name' then
-      @itemdata[:areas].push str if @itemdata
+      @itemdata[:areabuf][:name] = str if @itemdata and @itemdata[:areabuf]
     else
       return
     end
@@ -124,10 +150,26 @@ class App
     @files = []
   end
 
+  def cancelWarning objpat, row
+    re = /^#{Regexp.quote(objpat)}/
+    @out_state.keys.each {|objid|
+      next unless re === objid
+      xrow = row.dup
+      xrow['obj'] = objid
+      xrow['kname'] = @out_state['kname']
+      @out_state[objid] = xrow
+    }
+  end
+
   def msgscan name, mtime, body, opts
     listener = JMXParser.new(opts) {|row|
       objid = row['obj']
-      @out_state[objid] = row
+      case objid
+      when /^(dosha\.\d+)\.1$/ then cancelWarning($1, row)
+      when /^(\w+\.\d+)\.0+$/ then cancelWarning($1, row)
+      else
+        @out_state[objid] = row
+      end
     }
     r = catch(:skipMsg) {
       REXML::Parsers::StreamParser.new(body, listener).parse
@@ -165,7 +207,7 @@ class App
     io.close
   end
 
-  def xmlfile arg
+  def xmlfile fnam
     mtime = File.stat(fnam).mtime
     File.open(fnam, 'rb') {|io|
       io.set_encoding('BINARY')
