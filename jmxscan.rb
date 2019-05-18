@@ -85,7 +85,7 @@ class App
 
   def msgscan name, mtime, body
     if body.nil?
-      @logger.warn("nil body msgid:#{name}")
+      @logger.err("nil body msgid:#{name}")
       return
     end
     listener = JMXParser.new {|tup|
