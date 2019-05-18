@@ -39,7 +39,16 @@
 - 判別：/Report/Control/Title equals ”地方海上警報（Ｈ２８）” and /Report/Control/Status equals "通常”
 - 予報区：地方海上予報区
 - 有効期限管理： /Report/Head/ValidDateTime でエクスパイアするか、それまでに同種情報で上書き
-- タプル生成： foreach /Report/Head/Headline/Information[@type="地方海上警報"]/Item { foreach Kind { set kind = Code; foreach ../Areas/Area { set area = Code; yield [kind, area]; }}} 
+- 収集対象： foreach /Report/Head/Headline/Information[@type="地方海上警報"]/Item
+- ジオリファレンス： Areas/Area/Code で特定される。
+  リストは https://tako.toyoda-eizi.net/2018/jmxdocs/jmaxml_20181122_Code/20130523_AreaMarineAJ.xls の AreaMarineJ シート。
+  "AreaMarineJ.#{Areas/Area/Code}" とでもして保存するのがよいか。
+- どのような状態がありうるか：
+  Kind/Code なので、 "VPCU51.#{Kind/Code}" として保存するのがよいかと思いたくなるが、それはだめ。
+  同一予報区に複数種類の地方海上警報が出うる（このとき複数 Item となる）ので、これらをまとめた状態をかんがえると品質管理の負担が大きい。
+  要するにハザードごとにばらばらの状態にするしかないのだろう。
+  霧と着氷と風は相互に独立だが、風は強さによって上書きされうる。
+  また、 Kind/Code = "00" (Kind/Name = "海上警報解除") があると当該地区の全警報が解除になる。そういうふうに状態遷移をかかねばならない。
 
 ### 気象特別警報・警報・注意報
 
