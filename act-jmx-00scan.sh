@@ -3,9 +3,10 @@ set -Ceuo pipefail
 
 PATH=/bin:/usr/bin
 
-: ${phase:?} ${base:?} ${reftime:?} ${datedir:?} ${nwp:?}
+: ${datedir:?}
+: ${nwp:?}
 
-# logger --tag wxmon --id=$$ -p news.notice -- "nwp=$nwp datedir=$datedir phase=$phase base=$base reftime=$reftime"
+# logger --tag wxmon --id=$$ -p news.notice -- "nwp=$nwp datedir=$datedir"
 
 : ${ruby:=/usr/bin/ruby}
 : ${script:=${nwp}/bin/jmxscan.rb}
@@ -14,7 +15,9 @@ cd ${datedir}
 test ! -e tmp.ltsv || rm -f tmp.ltsv
 ymd=$(basename ${datedir} .new)
 
-if test jmx-index-${ymd}.ltsv -nt jmx-${ymd}.tar ; then
+if $ruby -e 'exit(15) if (File.stat(ARGV[1]).mtime - File.stat(ARGV[0]).mtime) > 3600.0' \
+  jmx-index-${ymd}.ltsv jmx-${ymd}.tar 
+then
   logger --tag wxmon --id=$$ -p news.info -- "jmx-index-${ymd}.ltsv up to date"
   exit 0
 fi
