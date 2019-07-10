@@ -93,7 +93,11 @@ class App
       tup.each {|k,v| ary.push "#{k}:#{v}" }
       puts ary.join("\t") rescue Errno::EPIPE
     }
-    REXML::Parsers::StreamParser.new(body, listener).parse
+    begin
+      REXML::Parsers::StreamParser.new(body, listener).parse
+    rescue Exception => e
+      STDERR.puts "#{e.class.to_s}: #{name} #{e.message.split(/\n/).first}"
+    end
   end
 
   def tarfile fnam
