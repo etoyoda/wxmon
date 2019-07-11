@@ -88,6 +88,10 @@ class App
       @logger.err("nil body msgid:#{name}")
       return
     end
+    if body.empty?
+      @logger.err("empty body msgid:#{name}")
+      return
+    end
     listener = JMXParser.new {|tup|
       ary = ["msgid:#{name}", "mtime:#{mtime.utc.strftime('%Y-%m-%dT%H:%M:%SZ')}"]
       tup.each {|k,v| ary.push "#{k}:#{v}" }

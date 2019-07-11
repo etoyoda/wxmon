@@ -15,7 +15,7 @@ cd ${datedir}
 test ! -e tmp.ltsv || rm -f tmp.ltsv
 ymd=$(basename ${datedir} .new)
 
-if $ruby -e 'exit(15) if (File.stat(ARGV[1]).mtime - File.stat(ARGV[0]).mtime) > 3600.0' \
+if $ruby -e 'exit(15) if (File.stat(ARGV[1]).mtime - File.stat(ARGV[0]).mtime) > 3000.0' \
   jmx-index-${ymd}.ltsv jmx-${ymd}.tar 
 then
   logger --tag wxmon --id=$$ -p news.info -- "jmx-index-${ymd}.ltsv up to date"
