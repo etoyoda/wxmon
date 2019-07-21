@@ -92,6 +92,10 @@ class App
       @logger.err("empty body msgid:#{name}")
       return
     end
+    if /\0\0\0\0$/ === body
+      @logger.err("nul at end of msgid:#{name}")
+      return
+    end
     listener = JMXParser.new {|tup|
       ary = ["msgid:#{name}", "mtime:#{mtime.utc.strftime('%Y-%m-%dT%H:%M:%SZ')}"]
       tup.each {|k,v| ary.push "#{k}:#{v}" }
@@ -99,8 +103,13 @@ class App
     }
     begin
       REXML::Parsers::StreamParser.new(body, listener).parse
-    rescue Exception => e
-      STDERR.puts "#{e.class.to_s}: #{name} #{e.message.split(/\n/).first}"
+    rescue StandardError => e
+      msg = e.message.split(/\n/).first
+      STDERR.puts "#{e.class.to_s}: #{name} #{msg}"
+      if $DEBUG
+        fn = "dbg#{name}.xml"
+        File.open(fn, 'wb'){|fp| fp.write body }
+      end
     end
   end
 
