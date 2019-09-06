@@ -32,7 +32,7 @@ GDBM::open(pushdb, GDBM::READER) {|db|
         dt = (mtime - utime).floor
         dttab[dt] += 1
         if dt > 300 then
-          STDERR.puts [msgid, utime, mtime, dt].inspect
+          STDERR.puts [msgid, utime, mtime, dt].inspect if $VERBOSE
         end
       else
         nfail += 1
