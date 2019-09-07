@@ -81,6 +81,16 @@ class App
   def initialize
     @onset = Time.now
     @logger = Syslog.open('jmxscan', Syslog::LOG_PID, Syslog::LOG_NEWS)
+    @kill = Hash.new
+  end
+
+  def killfile fnam
+    File.open(fnam, 'r:utf-8'){|fp|
+      fp.each_line {|line|
+        next unless /urn:uuid:[-a-f0-9]+/ === line
+        @kill[$&] = true
+      }
+    }
   end
 
   def msgscan name, mtime, body
@@ -122,6 +132,10 @@ class App
     end
     Archive::Tar::Minitar::Reader.open(io) { |tar|
       tar.each_entry {|ent|
+        if @kill[ent.name] then
+          #STDERR.puts "#kill #{ent.name}"
+          next
+        end
         msgscan(ent.name, Time.at(ent.mtime), ent.read)
       }
     }
@@ -135,7 +149,12 @@ class App
   end
 
   def run argv
-    argv.each{|arg| tarfile(arg); GC.start }
+    argv.each{|arg|
+        case arg
+        when /^--kill=/ then killfile($')
+        else tarfile(arg); GC.start
+        end
+      }
     syslog
   end
 
