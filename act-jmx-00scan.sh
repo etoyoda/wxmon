@@ -1,6 +1,7 @@
 #!/bin/sh
 set -Ceuo pipefail
 
+export LANG=en_US.UTF-8
 PATH=/bin:/usr/bin
 
 : ${datedir:?}
