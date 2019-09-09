@@ -1,5 +1,6 @@
 #!/bin/bash
 set -Ceuo pipefail
+export LANG=en_US.utf8
 PATH=/bin:/usr/bin
 
 : ${nwp:?}
