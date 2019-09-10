@@ -12,6 +12,8 @@ logger --tag wxmon-housekeep --id=$$ -p news.notice -- "nwp=$nwp datedir=$datedi
 test -d ${nwp}/p0/${datedir} || exit 0
 cd ${nwp}/p0/${datedir}
 
+test ! -f z.$$ || rm -f z.$$
+
 ${ruby} ${nwp}/bin/tdif-pull.rb jmx-index-2*.ltsv > z.$$
 mv z.$$ tdif-pull.txt
 ${ruby} ${nwp}/bin/tdif-push.rb pshb.db jmx-index-2*.ltsv > z.$$
@@ -20,3 +22,5 @@ if test -d logs; then
   ln -f tdif-pull.txt logs/tdif-pull.txt
   ln -f tdif-push.txt logs/tdif-push.txt
 fi
+logger --tag wxmon-housekeep --id=$$ -p news.notice -- "done"
+
