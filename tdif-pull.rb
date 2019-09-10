@@ -5,6 +5,7 @@ dttab = Hash.new(0)
 for line in ARGF
   row = {}
   line.chomp.split(/\t/).each {|cell| k, v = cell.split(/:/, 2); row[k] = v }
+  next unless row['utime']
   u = Time.parse(row['utime']).utc
   m = Time.parse(row['mtime']).utc
   dt = ((m - u) / 10).floor
