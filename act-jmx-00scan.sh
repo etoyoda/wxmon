@@ -20,8 +20,12 @@ kill=''
 if [ -f jmx-index-${ymd}.ltsv ]; then
   kill="--kill=jmx-index-${ymd}.ltsv"
 fi
+db=''
+if [ -f jmx-${ymd}.idx1 ]; then
+  db="--db=jmx-${ymd}.idx1"
+fi
 
-rc=0 && $ruby ${script} ${kill} jmx-${ymd}.tar > tmp.ltsv || rc=$?
+rc=0 && $ruby ${script} ${kill} ${db} jmx-${ymd}.tar > tmp.ltsv || rc=$?
 if (( $rc != 0 )) ; then
   logger --tag wxmon --id=$$ -p news.err -s -- "jmxscan rc=$rc"
   exit $rc
