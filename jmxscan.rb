@@ -82,6 +82,7 @@ class App
     @onset = Time.now
     @logger = Syslog.open('jmxscan', Syslog::LOG_PID, Syslog::LOG_NEWS)
     @kill = Hash.new
+    @ftdb = nil
   end
 
   def killfile fnam
@@ -91,6 +92,11 @@ class App
         @kill[$&] = true
       }
     }
+  end
+
+  def dbfile fnam
+    require 'gdbm'
+    @ftdb = GDBM::open(fnam, GDBM::READER)
   end
 
   def msgscan name, mtime, body
@@ -108,6 +114,12 @@ class App
     end
     listener = JMXParser.new {|tup|
       ary = ["msgid:#{name}", "mtime:#{mtime.utc.strftime('%Y-%m-%dT%H:%M:%SZ')}"]
+      if @ftdb then
+        require 'time'
+        lmtime = @ftdb["lmt/#{name}"]
+        lmtime = Time.parse(lmtime).utc.strftime('%Y-%m-%dT%H:%M:%SZ') if lmtime
+        tup['lmtime'] = lmtime if lmtime
+      end
       tup.each {|k,v| ary.push "#{k}:#{v}" }
       puts ary.join("\t") rescue Errno::EPIPE
     }
@@ -152,6 +164,7 @@ class App
     argv.each{|arg|
         case arg
         when /^--kill=/ then killfile($')
+        when /^--db=/ then dbfile($')
         else tarfile(arg); GC.start
         end
       }

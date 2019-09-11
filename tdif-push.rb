@@ -8,7 +8,9 @@ udb = Hash.new
 for line in ARGF
   row = {}
   line.chomp.split(/\t/).each {|cell| k, v = cell.split(/:/, 2); row[k] = v }
-  u = Time.parse(row['utime']).utc
+  utstr = row['lmtime']
+  next unless utstr
+  u = Time.parse(utstr).utc
   msgid = row['msgid'].to_s
   udb[msgid] = u
 end

@@ -7,20 +7,27 @@ PATH=/bin:/usr/bin
 : ${ruby:=/usr/bin/ruby}
 : ${datedir:=latest}
 
+
 logger --tag wxmon-housekeep --id=$$ -p news.notice -- "nwp=$nwp datedir=$datedir"
 
 test -d ${nwp}/p0/${datedir} || exit 0
 cd ${nwp}/p0/${datedir}
 
+st=init
+trap 'logger --tag wxmon-housekeep --id=$$ -p news.err -- "exit code $? phase $st"' 0
+
 test ! -f z.$$ || rm -f z.$$
 
+st=pull
 ${ruby} ${nwp}/bin/tdif-pull.rb jmx-index-2*.ltsv > z.$$
 mv z.$$ tdif-pull.txt
+test ! -d logs || ln -f tdif-pull.txt logs/tdif-pull.txt
+
+st=push
 ${ruby} ${nwp}/bin/tdif-push.rb pshb.db jmx-index-2*.ltsv > z.$$
 mv z.$$ tdif-push.txt
-if test -d logs; then
-  ln -f tdif-pull.txt logs/tdif-pull.txt
-  ln -f tdif-push.txt logs/tdif-push.txt
-fi
+test ! -d logs || ln -f tdif-push.txt logs/tdif-push.txt
+
+trap 0
 logger --tag wxmon-housekeep --id=$$ -p news.notice -- "done"
 
