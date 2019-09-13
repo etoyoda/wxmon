@@ -5,17 +5,17 @@ PATH=/bin:/usr/bin
 
 : ${nwp:?}
 : ${ruby:=/usr/bin/ruby}
-: ${datedir:=latest}
+: ${wkdir:=${nwp}/p0/latest}
 
 
-logger --tag wxmon-housekeep --id=$$ -p news.notice -- "nwp=$nwp datedir=$datedir"
+logger --tag wxmon-housekeep --id=$$ -p news.notice -- "nwp=$nwp wkdir=$wkdir"
+trap 'logger --tag wxmon-housekeep --id=$$ -p news.err -- "exitcode=$? phase=$st"' 0
 
-test -d ${nwp}/p0/${datedir} || exit 0
-cd ${nwp}/p0/${datedir}
+st=chdir
+# this must not fail, otherwise stderr message to be emailed
+cd ${wkdir}
 
 st=init
-trap 'logger --tag wxmon-housekeep --id=$$ -p news.err -- "exit code $? phase $st"' 0
-
 test ! -f z.$$ || rm -f z.$$
 
 st=pull
