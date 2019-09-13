@@ -37,6 +37,7 @@ GDBM::open(pushdb, GDBM::READER) {|db|
           STDERR.puts [msgid, utime, mtime, dt].inspect if $VERBOSE
         end
       else
+        STDERR.puts [msgid, utime, mtime, "fail"].inspect if $VERBOSE
         nfail += 1
       end
     }
