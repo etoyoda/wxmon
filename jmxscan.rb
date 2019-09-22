@@ -97,6 +97,9 @@ class App
   def dbfile fnam
     require 'gdbm'
     @ftdb = GDBM::open(fnam, GDBM::READER)
+  rescue Errno::EAGAIN
+    @logger.err("cannot open db #{fnam}")
+    exit 11  # EAGAIN in most Linux
   end
 
   def msgscan name, mtime, body
