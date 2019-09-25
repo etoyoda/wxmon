@@ -17,7 +17,9 @@ end
 
 n = 0
 nfail = 0
+npushmiss = 0
 dttab = Hash.new(0)
+pstab = Hash.new
 
 GDBM::open(pushdb, GDBM::READER) {|db|
   postid = db['postid'].to_i
@@ -29,6 +31,7 @@ GDBM::open(pushdb, GDBM::READER) {|db|
       next unless /<id>(.*?)<\/id>/ === ent
       msgid = $1
       utime = udb[msgid]
+      pstab[msgid] = mtime
       n += 1
       if utime then
         dt = (mtime - utime).floor
@@ -37,14 +40,26 @@ GDBM::open(pushdb, GDBM::READER) {|db|
           STDERR.puts [msgid, utime, mtime, dt].inspect if $VERBOSE
         end
       else
-        STDERR.puts [msgid, utime, mtime, "fail"].inspect if $VERBOSE
+        mtimes = mtime.strftime('%Y-%m-%dT%H:%M:%S')
+        tee = sprintf("#pullmiss\tmtime:%s\t%s\n", mtimes, msgid)
+        puts tee
+        STDERR.puts tee
         nfail += 1
       end
     }
   }
+  for msgid in udb.keys
+    next if pstab.include?(msgid)
+    utimes = udb[msgid].strftime('%Y-%m-%dTH%:%M:%S')
+    tee = sprintf("#pushmiss\tutime:%s\t%s\n", utimes, msgid)
+    puts tee
+    STDERR.puts tee
+    npushmiss += 1
+  end
 }
 
-puts "#fail\t#{nfail}\t#{n}\t#{"%4.2f" % (nfail.to_f/n*100)} %"
+printf("#stat\tn=%u\tpull=%u\t%4.2f\tpush=%u\t%4.2f\n", n, nfail, nfail*100.0/n,
+  npushmiss, npushmiss*100.0/n)
 0.upto(dttab.keys.max) {|dt|
   puts "#{dt}\t#{dttab[dt]}"
 }
