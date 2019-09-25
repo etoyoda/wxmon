@@ -41,7 +41,7 @@ GDBM::open(pushdb, GDBM::READER) {|db|
         end
       else
         mtimes = mtime.strftime('%Y-%m-%dT%H:%M:%SZ')
-        tee = sprintf("#pullmiss\tmtime:%s\t%s\n", mtimes, msgid)
+        tee = sprintf("#pullmiss\tmtime:%s\t%s\tpostid:%s\n", mtimes, msgid, id)
         puts tee
         STDERR.puts tee
         nfail += 1
