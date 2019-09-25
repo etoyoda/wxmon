@@ -40,7 +40,7 @@ GDBM::open(pushdb, GDBM::READER) {|db|
           STDERR.puts [msgid, utime, mtime, dt].inspect if $VERBOSE
         end
       else
-        mtimes = mtime.strftime('%Y-%m-%dT%H:%M:%S')
+        mtimes = mtime.strftime('%Y-%m-%dT%H:%M:%SZ')
         tee = sprintf("#pullmiss\tmtime:%s\t%s\n", mtimes, msgid)
         puts tee
         STDERR.puts tee
@@ -50,7 +50,7 @@ GDBM::open(pushdb, GDBM::READER) {|db|
   }
   for msgid in udb.keys
     next if pstab.include?(msgid)
-    utimes = udb[msgid].strftime('%Y-%m-%dTH%:%M:%S')
+    utimes = udb[msgid].strftime('%Y-%m-%dTH%:%M:%SZ')
     tee = sprintf("#pushmiss\tutime:%s\t%s\n", utimes, msgid)
     puts tee
     STDERR.puts tee
