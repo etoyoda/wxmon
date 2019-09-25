@@ -36,8 +36,8 @@ GDBM::open(pushdb, GDBM::READER) {|db|
       if utime then
         dt = (mtime - utime).floor
         dttab[dt] += 1
-        if dt > 300 then
-          STDERR.puts [msgid, utime, mtime, dt].inspect if $VERBOSE
+        if dt > 3600 then
+          STDERR.puts [msgid, utime, mtime, dt].inspect
         end
       else
         mtimes = mtime.strftime('%Y-%m-%dT%H:%M:%SZ')
