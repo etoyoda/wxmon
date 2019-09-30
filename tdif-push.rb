@@ -24,6 +24,8 @@ pstab = Hash.new
 GDBM::open(pushdb, GDBM::READER) {|db|
   postid = db['postid'].to_i
   1.upto(postid) {|id|
+    topicname = db["tpn:#{id}"]
+    next if topicname and "JMAXML" != topicname
     mtime = Time.parse(db["upd:#{id}"]).utc
     ents = db["bdy:#{id}"].to_s.split(/<entry>/)
     ents.shift
