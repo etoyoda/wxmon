@@ -26,6 +26,7 @@ GDBM.open(fnam, 0666, GDBM::READER) {|db|
   }
 }
 for msgid, h in pdb
+  next unless h[lhs] or h[rhs]
   dt = if h[lhs] && h[rhs] then h[lhs] - h[rhs] else nil end
   puts [dt, h[lhs], h[rhs], msgid].inspect
 end
