@@ -26,10 +26,17 @@ if [ -f jmx-${ymd}.idx1 ]; then
 fi
 
 rc=0 && $ruby ${script} ${kill} ${db} jmx-${ymd}.tar > tmp.ltsv || rc=$?
-if (( $rc != 0 )) ; then
-  logger --tag wxmon --id=$$ -p news.err -s -- "jmxscan rc=$rc"
-  exit $rc
-fi
+case $rc in
+0)
+  : okay
+  ;;
+11)
+  logger --tag wxmon --id=$$ -p news.err -- "jmxscan rc=$rc" ; exit $rc
+  ;;
+*)
+  logger --tag wxmon --id=$$ -p news.err -s -- "jmxscan rc=$rc" ; exit $rc
+  ;;
+esac
 
 cat tmp.ltsv >> jmx-index-${ymd}.ltsv
 logger --tag wxmon --id=$$ -p news.info -- "jmx-index-${ymd}.ltsv updated"
