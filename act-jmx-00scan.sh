@@ -13,12 +13,12 @@ PATH=/bin:/usr/bin
 : ${script:=${nwp}/bin/jmxscan.rb}
 
 cd ${datedir}
-if test -e tmp.ltsv ; then
+if test -e lock-wxmon.ltsv ; then
   logger --tag wxmon --id=$$ -p news.err -- "rescue=EAGAIN"
   exit 11
 fi
-trap 'rm -f tmp.ltsv' 0
-touch tmp.ltsv
+trap 'rm lock-wxmon.ltsv' 0
+touch lock-wxmon.ltsv
 
 ymd=$(basename ${datedir} .new)
 
@@ -31,7 +31,7 @@ if [ -f jmx-${ymd}.idx1 ]; then
   db="--db=jmx-${ymd}.idx1"
 fi
 
-rc=0 && $ruby ${script} ${kill} ${db} jmx-${ymd}.tar > tmp.ltsv || rc=$?
+rc=0 && $ruby ${script} ${kill} ${db} jmx-${ymd}.tar >> lock-wxmon.ltsv || rc=$?
 case $rc in
 0)
   : okay
@@ -44,9 +44,7 @@ case $rc in
   ;;
 esac
 
-test -e jmx-index-${ymd}.ltsv || touch jmx-index-${ymd}.ltsv
-sort -u tmp.ltsv jmx-index-${ymd}.ltsv > z-jmx-index.ltsv
-mv -f z-jmx-index.ltsv jmx-index-${ymd}.ltsv
+cat lock-wxmon.ltsv >> jmx-index-${ymd}.ltsv
 logger --tag wxmon --id=$$ -p news.info -- "jmx-index-${ymd}.ltsv updated"
 
 exit 0
