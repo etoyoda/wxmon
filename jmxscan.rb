@@ -116,7 +116,10 @@ class App
       return
     end
     listener = JMXParser.new {|tup|
-      ary = ["msgid:#{name}", "mtime:#{mtime.utc.strftime('%Y-%m-%dT%H:%M:%SZ')}"]
+      ary = [
+        "mtime:#{mtime.utc.strftime('%Y-%m-%dT%H:%M:%SZ')}",
+        "msgid:#{name}"
+      ]
       if @ftdb then
         require 'time'
         lmtime = @ftdb["lmt/#{name}"]
