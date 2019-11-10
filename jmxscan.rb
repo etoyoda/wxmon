@@ -133,7 +133,8 @@ class App
       REXML::Parsers::StreamParser.new(body, listener).parse
     rescue StandardError => e
       msg = e.message.split(/\n/).first
-      STDERR.puts "#{e.class.to_s}: #{name} #{msg}"
+      @logger.err("parse err #{name} #{msg}")
+      #STDERR.puts "#{e.class.to_s}: #{name} #{msg}"
       if $DEBUG
         fn = "dbg#{name}.xml"
         File.open(fn, 'wb'){|fp| fp.write body }
