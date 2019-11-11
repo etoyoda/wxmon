@@ -83,6 +83,7 @@ class App
     @logger = Syslog.open('jmxscan', Syslog::LOG_PID, Syslog::LOG_NEWS)
     @kill = Hash.new
     @ftdb = nil
+    @brokenmsg = []
   end
 
   def killfile fnam
@@ -96,7 +97,7 @@ class App
 
   def dbfile fnam
     require 'gdbm'
-    @ftdb = GDBM::open(fnam, GDBM::READER)
+    @ftdb = GDBM::open(fnam)
   rescue Errno::EAGAIN
     @logger.err("rescue=EAGAIN db #{fnam}")
     exit 11  # EAGAIN in most Linux
@@ -134,12 +135,21 @@ class App
     rescue StandardError => e
       msg = e.message.split(/\n/).first
       @logger.err("rescue=ParseError #{name} #{msg}")
-      #STDERR.puts "#{e.class.to_s}: #{name} #{msg}"
+      @brokenmsg.push name
       if $DEBUG
         fn = "dbg#{name}.xml"
         File.open(fn, 'wb'){|fp| fp.write body }
       end
     end
+  end
+
+  def dbnotify
+    return unless @ftdb
+    @brokenmsg.each{|name|
+      @ftdb.delete(name)
+    }
+  rescue GDBMError
+    @logger.err("rescue=GDBMError dbnotify")
   end
 
   def tarfile fnam
@@ -175,6 +185,7 @@ class App
         else tarfile(arg); GC.start
         end
       }
+    dbnotify
     syslog
   end
 
