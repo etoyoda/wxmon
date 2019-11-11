@@ -98,7 +98,7 @@ class App
     require 'gdbm'
     @ftdb = GDBM::open(fnam, GDBM::READER)
   rescue Errno::EAGAIN
-    @logger.err("cannot open db #{fnam}")
+    @logger.err("rescue=EAGAIN db #{fnam}")
     exit 11  # EAGAIN in most Linux
   end
 
@@ -133,7 +133,7 @@ class App
       REXML::Parsers::StreamParser.new(body, listener).parse
     rescue StandardError => e
       msg = e.message.split(/\n/).first
-      @logger.err("parse err #{name} #{msg}")
+      @logger.err("rescue=ParseError #{name} #{msg}")
       #STDERR.puts "#{e.class.to_s}: #{name} #{msg}"
       if $DEBUG
         fn = "dbg#{name}.xml"
