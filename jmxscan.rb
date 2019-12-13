@@ -129,6 +129,7 @@ class App
       end
       tup.each {|k,v| ary.push "#{k}:#{v}" }
       puts ary.join("\t") rescue Errno::EPIPE
+      @brokenmsg.delete(name)
     }
     begin
       REXML::Parsers::StreamParser.new(body, listener).parse
