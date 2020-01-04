@@ -13,7 +13,7 @@ ymd="${yy}-${mm}-${dd}"
 a2mondir=${a2dir}/${yy}-${mm}
 test -d $a2mondir || mkdir $a2mondir
 
-zip -q -r $a2mondir/text-${ymd}.zip ${ymd}*wxmon
+zip -q -r $a2mondir/text-${ymd}.zip ${ymd}*wxmon ${ymd}*plot
 
 
 set $(date --date='7 day ago' +'%Y-%m-%d')
