@@ -22,4 +22,4 @@ rm -rf ${ymd}*wxmon
 
 set $(date --date='8 day ago' +'%Y-%m-%d')
 ymd=$1
-rm -rf ${ymd}*wxmon
+rm -rf ${ymd}*plot
