@@ -89,7 +89,7 @@ class App
   def killfile fnam
     File.open(fnam, 'r:utf-8'){|fp|
       fp.each_line {|line|
-        next unless /urn:uuid:[-a-f0-9]+/ === line
+        next unless /(urn:uuid:[-a-f0-9_]+|[-\w]+\.xml)/ === line
         @kill[$&] = true
       }
     }
