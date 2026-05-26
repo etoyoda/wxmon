@@ -1,8 +1,5 @@
 #!/bin/sh
 
-LANG=en_US.UTF-8
-export LANG
-
 : usage: $0 input.txt from@example.org [-s subject] dest@example.com ...
 
 input=$1

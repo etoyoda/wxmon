@@ -119,11 +119,6 @@ class App
     @fixdb = {}
   end
 
-  @@ioopts = {
-    :invalid => :replace,
-    :undef => :replace
-  }
-
   def check row
     mtime, title, edof = row['mtime'], row['title'], row['edof']
     return if @cutoff and mtime < @cutoff
@@ -145,7 +140,7 @@ class App
   def compile
     @argv.each{|fnam|
       File.open(fnam, 'rt') {|fp|
-        fp.set_encoding('utf-8', @@ioopts)
+        fp.set_encoding('utf-8', :invalid=>:replace, :undef=>:replace)
         fp.each_line { |line|
           row = Hash[*(line.chomp.split(/\t/).map{|cell| cell.split(/:/,2)}.flatten)]
           check(row)
