@@ -10,10 +10,10 @@ class JMXParser
   require 'rexml/streamlistener'
   include REXML::StreamListener
 
-  def initialize
+  def initialize &callback
     @path = ['']
     @xpath = nil
-    @callback = proc
+    @callback = callback
     @flag = nil
     @msgs = {}
     @row = nil
@@ -162,7 +162,7 @@ class App
   end
 
   def tarfile fnam
-    require 'archive/tar/minitar'
+    require 'minitar'
     rawio = io = nil
     begin
       io = File.open(fnam, 'rb')
@@ -173,7 +173,7 @@ class App
       rawio.set_encoding('BINARY')
       io = Zlib::GzipReader.new(rawio)
     end
-    Archive::Tar::Minitar::Reader.open(io) { |tar|
+    Minitar::Reader.open(io) { |tar|
       tar.each_entry {|ent|
         next unless @fixdb[ent.name]
         realmsg(ent.name, ent.read)

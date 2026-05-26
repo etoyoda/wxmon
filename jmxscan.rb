@@ -1,7 +1,7 @@
 #!/usr/bin/ruby
 
 require 'rubygems'
-require 'archive/tar/minitar'
+require 'minitar'
 require 'syslog'
 
 class JMXParser
@@ -10,10 +10,10 @@ class JMXParser
   require 'rexml/streamlistener'
   include REXML::StreamListener
 
-  def initialize
+  def initialize &callback
     @tup = {}
     @path = ['']
-    @callback = proc
+    @callback = callback
     @xpath = nil
     @data = {}
   end
@@ -160,7 +160,7 @@ class App
       require 'zlib'
       io = Zlib::GzipReader.new(rawio)
     end
-    Archive::Tar::Minitar::Reader.open(io) { |tar|
+    Minitar::Reader.open(io) { |tar|
       tar.each_entry {|ent|
         if @kill[ent.name] then
           #STDERR.puts "#kill #{ent.name}"

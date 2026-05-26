@@ -2,7 +2,7 @@
 # coding: utf-8
 
 require 'rubygems'
-require 'archive/tar/minitar'
+require 'minitar'
 require 'syslog'
 
 class JMXParser
@@ -11,11 +11,11 @@ class JMXParser
   require 'rexml/streamlistener'
   include REXML::StreamListener
 
-  def initialize opts = {}
+  def initialize opts = {}, &callback
     # essentials
     @path = ['']
     @xpath = nil
-    @callback = proc
+    @callback = callback
     @meta = {}
     # used in parsing //Item[@type = right one for title]
     @itemdata = nil
@@ -185,7 +185,7 @@ class App
     rawio.set_encoding('BINARY')
     require 'zlib'
     io = Zlib::GzipReader.new(rawio)
-    Archive::Tar::Minitar::Reader.open(io) { |tar|
+    Minitar::Reader.open(io) { |tar|
       tar.each_entry {|ent|
         msgscan(ent.name, Time.at(ent.mtime), ent.read, @opts)
       }
@@ -198,7 +198,7 @@ class App
   def tarfile fnam
     io = File.open(fnam, 'rb')
     io.set_encoding('BINARY')
-    Archive::Tar::Minitar::Reader.open(io) { |tar|
+    Minitar::Reader.open(io) { |tar|
       tar.each_entry {|ent|
         msgscan(ent.name, Time.at(ent.mtime), ent.read, @opts)
       }
